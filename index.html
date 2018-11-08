@@ -1,0 +1,143 @@
+<!doctype html>
+
+<html>
+
+<head></head>
+
+<body>
+
+<script>
+
+const params = new URLSearchParams(location.search);
+
+(function (h, w) {
+
+    const
+         log = (...args) => void console.log(...args)
+        ,input = id => document.getElementById(id)
+        ,table = (n, m) => {
+            
+            let
+                dom = document.createDocumentFragment(),
+                table = document.createElement('table');
+        
+            dom.appendChild(table);
+        
+            for (let y = 0; y < n; y++) {
+        
+                let row = table.insertRow();
+        
+                for (let x = 0; x < m; x++)
+        
+                    row.insertCell().innerHTML = x && y
+                        ? `<input id="${id(x)}${y}" />`
+                        : y || id(x).toUpperCase();
+            }
+        
+            return dom;
+        }
+        ,id = i => {
+
+            let n = '', m;
+
+            while (i) {
+
+                m = (i - 1) % 26;
+                n = String.fromCharCode(97 + m) + n;
+                i = parseInt((i - m) / 26);
+            }
+
+            return n;
+        }
+        ,i = id => {
+
+            const chars = id.toLowerCase().split('');
+            let i = 0;
+
+            for (let j = 0, char;char = chars[j]; j++)
+                i += (char.charCodeAt(0) - 97) * Math.pow(26, chars.length - j - 1);
+
+            return i;    
+        }
+        ,move = ev => {
+
+            if (ev.keyCode === 13) {
+
+                const z = ev.target.id.replace(/\d+/, '');
+                let x = i(z);
+                let y = parseInt(ev.target.id.replace(z, ''));
+
+                if (y < h - 1) {
+                    document.getElementById(z + ++y).focus();
+                }
+                else if (++x < w - 1) {
+                    document.getElementById(id(x + 1) + 1).focus();
+                }
+                else {
+                    document.getElementById('a1').focus();
+                }
+            }
+        }
+        ,enter = ev => move(ev)
+        ,focus = ev => ev.target.value = sheet.get(ev.target.id)
+        ,blur = ev => recalc(ev.target)
+        ,sheet = (() => {
+
+            let _ = {};
+
+            const
+                exists = (id) => typeof _[id] !== 'undefined'
+                ,get = id => exists(id) ? _[id] : ''
+                ,set = (id, value) => (typeof value !== 'undefined' && !! value.replace(/\s+/, '')) ? _[id] = value: del(id)
+                ,del = id => exists(id) && (delete _[id])
+                ,cells = () => _
+                ,ids = () => Object.keys(_)
+            ;
+
+            return {
+                get: get
+                ,set: set
+                ,del: del
+                ,exists: exists
+                ,ids: ids
+                ,cells: cells
+            };
+        })()
+        ,calc = id => {
+            
+            let exp = sheet.get(id);
+
+            if (exp[0] == '=') {
+
+                exp = exp.slice(1);
+                const ids = exp.replace(/\s+/, '').split(/[\+\-\*\/]/).reduce((ids, id) => {
+                    /^[a-z]/i.test(id) && ids.push(id.toLowerCase());
+                    return ids
+                }, []);
+                return (new Function(...ids, `return eval("${exp}")`))(...ids.map(id => ({valueOf: () => calc(id)}))).valueOf();
+            }
+            else {
+                let value = parseFloat(exp);
+                return ! isNaN(value) ? value : exp;
+            }
+        }
+        ,recalc = cell => {
+
+            sheet.set(cell.id, cell.value);
+            sheet.ids().forEach(id => input(id).value = calc(id));
+        }
+    ;
+
+    document.body.appendChild(table(h, w));
+
+    window.addEventListener('keydown', enter, true);
+    window.addEventListener('focus', focus, true);
+    window.addEventListener('blur', blur, true);
+
+}(params.get('h') || 1000, params.get('w') || 100));
+
+</script>
+
+</body>
+
+</html>
