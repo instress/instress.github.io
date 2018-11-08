@@ -1,3 +1,3 @@
 #Proof of concept
 
-https://instress.github.io?h=10&w=10
+https://instress.github.io
