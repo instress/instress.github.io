@@ -2,175 +2,280 @@
 
 <html>
 
-<head></head>
+<head>
+
+    <title>title</title>
+
+    <style>
+
+        * {
+            padding: 0;
+            margin: 0
+        }
+        body.busy * {cursor: progress}
+        table {
+            background-color: darkgrey;
+        }
+        input {
+            border: none;
+            padding: 0.25em 5px;
+        }
+        input:valid {background-color:floralwhite}
+        input:invalid {background-color:lightpink}
+
+    </style>
+
+</head>
 
 <body>
 
 <script>
 
-const params = new URLSearchParams(location.search);
+window.addEventListener('load', ev => {
 
-(function (h, w) {
+    (q => {
 
-    const
-         maybe = (t, s) => (s !== null && typeof s !== 'undefined' || s instanceof t) ? s : t()
-        ,find = id => document.getElementById(id)
-        ,id = i => {
+        const
+             doc = document
+            ,find = id => doc.getElementById(id)
+            ,isOneTo = m => n => typeof n == 'number' && n > 1 && n <= m ? n : 1
+            ,id = i => {
 
-            let n = '', m;
+                let n = '', m;
 
-            while (i) {
+                while (i) {
 
-                m = (i - 1) % 26;
-                n = String.fromCharCode(97 + m) + n;
-                i = parseInt((i - m) / 26);
-            }
-
-            return n;
-        }
-        ,i = id => {
-
-            const chars = id.toLowerCase().split('');
-            let i = 0;
-
-            for (let j = 0, char;char = chars[j]; j++)
-                i += (char.charCodeAt(0) - 97) * Math.pow(26, chars.length - j - 1);
-
-            return i;    
-        }
-        ,Cell = (value) => {
-            const cell = {
-                 value: typeof value !== 'undefined' ? value : ''
-                ,isExpression: () => cell.value[0] == '='
-                ,isError: false
-                ,isEmpty: () => cell.value === ''
-                ,isFloat: () => /^(\d+\.*)+$/.test(cell.value)
-            };
-            return cell;
-        }
-        ,Sheet = (() => {
-            
-            let _ = {}, self;
-
-            const
-                 exists = id => typeof _[id] !== 'undefined'
-                ,get = id => exists(id) ? _[id] : null
-                ,set = (id, value) => {
-                    ('' + value).replace(/\s+/, '') ? _[id] = Cell(value): del(id);
-                    return self;
+                    m = (i - 1) % 26;
+                    n = String.fromCharCode(97 + m) + n;
+                    i = parseInt((i - m) / 26);
                 }
-                ,del = id => exists(id) && (delete _[id])
-                ,cells = () => _
-                ,ids = () => Object.keys(_)
-                ,calc = (id) => {
 
-                    if ( ! self.exists(id)) return undefined;
-                    
-                    let cell = self.get(id);
-
-                    if (cell.isExpression()) {
-
-                        if (cell.value.length == 1)
-                            return '=SintaxError';
-
-                        let
-                             exp = cell.value.slice(1)
-                            ,err = () => cell.isError = true
-                            ,f = `try {let r = eval("${exp}"); return r;} catch(ex) {eval("${err()}"); return '=' + ex.name;}`
-                        ;
-
-                        const ids = exp.replace(/\s+/, '').split(/[\+\-\*\/]/).reduce((ids, id) => {
-                            /^[a-z]+\d+$/i.test(id) && ids.push(id.toLowerCase());
-                            return ids;
-                        }, []);
-                        return (new Function(...ids, f))(...ids.map(id => ({valueOf: () => self.calc(id)}))).valueOf();
-                    }
-                    else if(cell.isFloat()) {
-
-                        return parseFloat(cell.value);
-                    }
-                    else if( ! cell.isEmpty()) {
-
-                        return NaN;
-                    }
-                    else {
-                        return cell.value;
-                    }
-                }
-            ;
-
-            return self = {
-                 get: get
-                ,set: set
-                ,del: del
-                ,exists: exists
-                ,ids: ids
-                ,cells: cells
-                ,calc: calc
-            };
-        })()
-        ,createTable = (h, w) => {
-
-            let
-                dom = document.createDocumentFragment(),
-                table = document.createElement('table');
-        
-            dom.appendChild(table);
-        
-            for (let y = 0; y < h + 1; y++) {
-        
-                let row = table.insertRow();
-        
-                for (let x = 0; x < w + 1; x++)
-        
-                    row.insertCell().innerHTML = x && y
-                        ? `<input id="${id(x)}${y}" />`
-                        : y || id(x).toUpperCase();
+                return n;
             }
-            
-            return dom;
-        }
-        ,keydown = ev => {
+            ,i = id => {
 
-            if (ev.keyCode === 13) {
+                const chars = id.toLowerCase().split('');
+                let i = 1;
 
+                for (let j = 0, char;char = chars[j]; j++)
+                    i += (char.charCodeAt(0) - 97) * Math.pow(26, chars.length - j - 1);
+
+                return i;    
+            }
+            ,pattern = /^([\-\+]*\d+)|(=([\-\+]*\d+)+)$/i
+            ,table = (h, w) => {
+
+                let
+                    dom = doc.createDocumentFragment()
+                    ,table = doc.createElement('table')
+                    ;
+
+                dom.appendChild(table);
+
+                for (let y = 0; y < h + 1; y++) {
+
+                    let row = table.insertRow();
+
+                    for (let x = 0; x < w + 1; x++)
+
+                        row.insertCell().innerHTML = x && y
+                            ? `<input id="${id(x)}${y}" pattern="${pattern.source}"/>`
+                            : y || id(x).toUpperCase();
+                }
+
+                return dom;
+            }
+            ,move = (ev) => {
+                
                 const z = ev.target.id.replace(/\d+/, '');
                 let x = i(z);
                 let y = parseInt(ev.target.id.replace(z, ''));
 
-                if (y < h) {
-                    document.getElementById(z + ++y).focus();
-                }
-                else if (++x < w) {
-                    document.getElementById(id(x + 1) + 1).focus();
-                }
-                else {
-                    document.getElementById('a1').focus();
+                switch (ev.keyCode) {
+                    case 9: tab(ev, x, y, z); break;
+                    case 13: enter(ev, x, y, z); break;
                 }
             }
+            ,tab = (ev, x, y, z) => {
+
+                if (ev.shiftKey) {
+
+                    if (x > 1) focus(find(id(--x) + y));
+                    else if (y > 1) focus(find(id(w) + --y));
+                    else focus(find(id(w) + h));
+                }
+                else
+
+                    if (x < w) focus(find(id(++x) + y));
+                    else if (y < h) focus(find('a' + ++y));
+                    else focus(find('a1'));
             }
-        ,focus = ev => {
+            ,enter = (ev, x, y, z) => {
 
-            ev.target.value = maybe(Cell, Sheet.get(ev.target.id)).value;
-            ev.target.addEventListener('blur', blur, true);
-        }
-        ,blur = ev => {
+                if (ev.shiftKey) {
 
-            ev.target.removeEventListener('blur', blur);
+                    if (y > 1) focus(find(z + --y));
+                    else if (x > 1) focus(find(id(--x) + h));
+                    else focus(find(id(w) + h));
+                }
+                else
 
-            if (ev.target.value == Sheet.get(ev.target.id))
-                return;
-            
-            Sheet.set(ev.target.id, ev.target.value);
-            Sheet.ids().forEach(id => find(id).value = Sheet.calc(id));
-        }
-    ;
+                    if (y < h) focus(find(z + ++y));
+                    else if (x < w) focus(find(id(++x) + 1));
+                    else focus(find('a1'));;
+            }
+            ,h = isOneTo(1000)(parseInt(q.get('h')))
+            ,w = isOneTo(100)(parseInt(q.get('w')))
+            ,d = q.get('d') || false
+            ;
+        
+        let p, r;
 
-    document.body.appendChild(createTable(h, w));
-    document.addEventListener('focus', focus, true);
-    document.addEventListener('keydown', keydown, true);
+        const
+             Cell = (value) => {
 
-})(10, 10);
+                const
+                     cell = {
+                        value: typeof value !== 'undefined' ? value : ''
+                        ,isExpression: () => cell.value[0] == '='
+                        ,isError: false
+                        ,isEmpty: () => cell.value === ''
+                        ,isFloat: () => /^[+-]*(\d+\.*)+$/.test(cell.value)
+                    }
+                    ;
+
+                return cell;
+            }
+            ,Sheet = (() => {
+                
+                let
+                     _ = {}
+                    ,self
+                    ;
+
+                const
+                     exists = id => typeof _[id] !== 'undefined'
+                    ,get = id => exists(id) ? _[id] : null
+                    ,set = (id, value) => {
+                        ('' + value).replace(/\s+/, '') ? _[id] = Cell(value): del(id);
+                        return self;
+                    }
+                    ,del = id => exists(id) && (delete _[id])
+                    ,cells = () => _
+                    ,ids = () => Object.keys(_)
+                    ,calc = (id) => {
+                        
+                        let cell = self.get(id);
+
+                        if (cell === null || cell.isEmpty())
+                            return '';
+
+                        if (cell.isExpression()) {
+
+                            if (cell.value.length == 1)
+                                return (cell.isError = true) && cell.value;
+
+                            let
+                                 exp = cell.value.slice(1)
+                                ,err = () => cell.isError = true
+                                ,f = `try {
+                                    let r = eval("${exp}");
+                                    return r
+                                } catch(ex) {
+                                    eval("${err()}");
+                                    return '=' + ex.name
+                                }`
+                                ;
+
+                            const
+                                 ids = exp
+                                .replace(/\s+/, '')
+                                .split(/[\+\-\*\/]/)
+                                .reduce((ids, id) => {
+                                    /^[a-z]+\d+$/i.test(id) && ids.push(id.toLowerCase());
+                                    return ids;
+                                }, [])
+                                ,result = (new Function(...ids, f))(...ids.map(id => ({valueOf: () => calc(id)}))).valueOf()
+                                ;
+                            
+                            return result;
+                        }
+                        else if(cell.isFloat()) return parseFloat(cell.value);
+                        else return cell.value;
+                    }
+                    ;
+
+                return self = {
+                    get: get
+                    ,set: set
+                    ,del: del
+                    ,exists: exists
+                    ,ids: ids
+                    ,cells: cells
+                    ,calc: calc
+                };
+            })()
+            ,cancel = ev => {
+
+                ev.preventDefault && ev.preventDefault();
+                ev.stopPropagation && ev.stopPropagation();
+                ev.returnValue = false;
+                ev.cancelBubble = true;
+            }
+            ,bind = () => {
+                
+                r = false;
+                p = false;
+                document.body.classList.remove('busy');
+                window.removeEventListener('focus', focusout, true);
+                window.addEventListener('click', click, true);
+                window.addEventListener('keydown', keydown, true);
+            }
+            ,unbind = (el) => {
+
+                document.body.classList.add('busy');
+                window.addEventListener('focus', focusout, true);
+                window.removeEventListener('click', click, true);
+                window.removeEventListener('keydown', keydown, true);
+
+                el.blur();
+                r = true;
+            }
+            ,keydown = ev => (ev.keyCode === 9 && cancel(ev), move(ev))
+            ,focusout = ev => ev.target.blur() || cancel(ev)
+            ,click = ev => ev.target && ev.target.id && focus(ev.target)
+            ,focus = async el => {
+                
+                if (p && p !== el) {
+                    
+                    unbind(el);
+                    await recalc(p).then(bind);
+                }
+                
+                el.value = (Sheet.get(el.id) || Cell()).value;
+                el.focus();
+                p = el;
+            }
+            ,sleep = s => new Promise(r => setTimeout(r, s * 1000))
+            ,recalc = (el) => new Promise(async r => {
+                    
+                if (el.value != Sheet.get(el.id)) {
+
+                    Sheet.set(el.id, el.value);
+                    Sheet.ids().forEach(id => find(id).value = Sheet.calc(id));
+                }
+
+                r();
+            })
+            ;
+
+        doc.body.appendChild(table(h, w));
+        
+        bind();
+
+    })(new URLSearchParams(location.search));
+
+});
 
 </script>
 
